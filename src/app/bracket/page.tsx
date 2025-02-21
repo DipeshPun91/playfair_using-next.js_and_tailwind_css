@@ -78,7 +78,7 @@ export default function BracketPage() {
   };
 
   return (
-    <div className="bg-white p-8">
+    <div className="bg-gray-50 p-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Tournament Bracket</h1>
         <button

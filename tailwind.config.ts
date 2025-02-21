@@ -22,7 +22,7 @@ export default {
     },
     extend: {
       colors: {
-        primary: "#e0e4e7",
+        primary: "#ffffff",
         accent: {
           DEFAULT: "#21E6C1",
           HOVER: "#1AAD9A",
