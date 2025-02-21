@@ -1,15 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Match {
   team1: string;
   team2: string;
+  winner?: string;
 }
 
+type TieSheetType = "knockout" | "league";
+
 export default function TieSheetGeneration() {
+  const router = useRouter();
   const [teams, setTeams] = useState<string[]>([]);
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [tieSheetType, setTieSheetType] = useState<TieSheetType>("knockout");
 
   const handleTeamInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setTeams(
@@ -23,129 +28,109 @@ export default function TieSheetGeneration() {
   const generateMatches = () => {
     if (teams.length < 2) return alert("Please enter at least two teams");
 
-    const shuffledTeams: string[] = [...teams].sort(() => Math.random() - 0.5);
-    const generatedMatches: Match[] = [];
+    const rounds: Match[][] = [];
 
-    for (let i = 0; i < shuffledTeams.length; i += 2) {
-      if (i + 1 < shuffledTeams.length) {
-        generatedMatches.push({
-          team1: shuffledTeams[i],
-          team2: shuffledTeams[i + 1],
-        });
+    if (tieSheetType === "knockout") {
+      const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
+      let currentRoundTeams = shuffledTeams;
+
+      while (currentRoundTeams.length > 1) {
+        const roundMatches: Match[] = [];
+
+        for (let i = 0; i < currentRoundTeams.length; i += 2) {
+          if (i + 1 < currentRoundTeams.length) {
+            roundMatches.push({
+              team1: currentRoundTeams[i],
+              team2: currentRoundTeams[i + 1],
+            });
+          } else {
+            roundMatches.push({
+              team1: currentRoundTeams[i],
+              team2: "Bye",
+              winner: currentRoundTeams[i],
+            });
+          }
+        }
+
+        rounds.push(roundMatches);
+        currentRoundTeams = roundMatches.map((match) => match.winner || "");
+      }
+    } else if (tieSheetType === "league") {
+      for (let i = 0; i < teams.length; i++) {
+        for (let j = i + 1; j < teams.length; j++) {
+          rounds.push([{ team1: teams[i], team2: teams[j] }]);
+        }
       }
     }
 
-    setMatches(generatedMatches);
+    localStorage.setItem("tournamentMatches", JSON.stringify(rounds));
+    localStorage.setItem("tieSheetType", tieSheetType);
+    router.push("/bracket");
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <header className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-900">
-          Tie Sheet Generation
-        </h1>
-        <p className="text-lg text-gray-600 mt-2">
-          Enter team names to generate match schedules.
-        </p>
-      </header>
+    <div className="container min-h-screen bg-primary p-8">
+      <div className="max-w-7xl px-4">
+        <header className="mb-12 text-start">
+          <h1 className="text-5xl font-bold text-gray-900 mb-4">
+            Tie Sheet Generation
+          </h1>
+          <p className="text-xl text-gray-600">
+            Enter team names to generate match schedules.
+          </p>
+        </header>
 
-      <main className="max-w-4xl mx-auto">
-        <div className="bg-white p-8 rounded-lg shadow-md">
-          <textarea
-            placeholder="Enter team names, one per line..."
-            className="w-full p-4 border border-gray-300 rounded-lg mb-6 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            rows={5}
-            onChange={handleTeamInput}
-          ></textarea>
-
-          <button
-            onClick={generateMatches}
-            className="w-full px-6 py-3 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-all duration-200"
-          >
-            Generate Matches
-          </button>
-        </div>
-
-        {matches.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-              Tournament Bracket
-            </h2>
-            <div className="space-y-8">
-              {/* Round 1 */}
-              <div>
-                <h3 className="text-xl font-semibold text-gray-700 mb-4">
-                  Round 1
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {matches.map((match, index) => (
-                    <div
-                      key={index}
-                      className="bg-white p-6 rounded-lg shadow-md border-l-4 border-indigo-500"
-                    >
-                      <p className="text-lg font-semibold text-gray-800 mb-2">
-                        Match {index + 1}
-                      </p>
-                      <p className="text-gray-600">
-                        {match.team1}{" "}
-                        <span className="mx-2 text-gray-400">vs</span>{" "}
-                        {match.team2}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Semi-Finals */}
-              {matches.length > 2 && (
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-700 mb-4">
-                    Semi-Finals
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[...Array(Math.ceil(matches.length / 2))].map(
-                      (_, index) => (
-                        <div
-                          key={index}
-                          className="bg-white p-6 rounded-lg shadow-md border-l-4 border-indigo-500"
-                        >
-                          <p className="text-lg font-semibold text-gray-800 mb-2">
-                            Semi-Final {index + 1}
-                          </p>
-                          <p className="text-gray-600">
-                            Winner of Match {index * 2 + 1}{" "}
-                            <span className="mx-2 text-gray-400">vs</span>{" "}
-                            Winner of Match {index * 2 + 2}
-                          </p>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Finals */}
-              {matches.length > 2 && (
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-700 mb-4">
-                    Finals
-                  </h3>
-                  <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-indigo-500">
-                    <p className="text-lg font-semibold text-gray-800 mb-2">
-                      Final Match
-                    </p>
-                    <p className="text-gray-600">
-                      Winner of Semi-Final 1{" "}
-                      <span className="mx-2 text-gray-400">vs</span> Winner of
-                      Semi-Final 2
-                    </p>
-                  </div>
-                </div>
-              )}
+        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 w-full">
+          <div className="space-y-6">
+            <div>
+              <label className="block text-lg font-medium text-gray-700 mb-2">
+                Team List
+              </label>
+              <textarea
+                placeholder="Enter team names, one per line..."
+                className="w-full px-4 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-75 ease-in-out custom-scrollbar resize-none"
+                rows={6}
+                onChange={handleTeamInput}
+              ></textarea>
             </div>
+
+            <div>
+              <label className="block text-lg font-medium text-gray-700 mb-2">
+                Tie Sheet Type
+              </label>
+              <select
+                value={tieSheetType}
+                onChange={(e) =>
+                  setTieSheetType(e.target.value as TieSheetType)
+                }
+                className="w-full px-4 py-2 mt-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-75 ease-in-out"
+              >
+                <option value="knockout">Knockout</option>
+                <option value="league">League</option>
+              </select>
+            </div>
+
+            <button
+              onClick={generateMatches}
+              className="w-full mt-4 py-3.5 bg-gradient-to-r from-green-500 to-green-600 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.01] flex items-center justify-center"
+            >
+              <span className="mr-2">Generate Matches</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
           </div>
-        )}
-      </main>
+        </div>
+      </div>
     </div>
   );
 }
