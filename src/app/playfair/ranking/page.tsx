@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface Team {
   id: number;
@@ -65,6 +67,48 @@ export default function RankingPage() {
     return a.losses - b.losses;
   });
 
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("League Rankings", 10, 10);
+
+    const headers = [["Rank", "Team", "Wins", "Losses", "Points"]];
+    const data = sortedTeams.map((team, index) => [
+      index + 1,
+      team.name,
+      team.wins,
+      team.losses,
+      team.points,
+    ]);
+
+    autoTable(doc, {
+      head: headers,
+      body: data,
+      startY: 20,
+      theme: "grid",
+      styles: { fontSize: 12 },
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    doc.save("league-rankings.pdf");
+  };
+
+  const downloadCSV = () => {
+    const headers = ["Rank,Team,Wins,Losses,Points"];
+    const data = sortedTeams.map((team, index) =>
+      [index + 1, team.name, team.wins, team.losses, team.points].join(",")
+    );
+
+    const csvContent = headers.concat(data).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "league-rankings.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container min-h-screen p-8">
@@ -100,6 +144,24 @@ export default function RankingPage() {
         </form>
 
         <div className="max-w-7xl mx-auto bg-white p-8 rounded-2xl shadow-md">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-semibold text-gray-900">Ranking</h2>
+            <div className="mb-6 flex gap-4">
+              <button
+                onClick={downloadPDF}
+                className="px-6 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600"
+              >
+                Download as PDF
+              </button>
+              <button
+                onClick={downloadCSV}
+                className="px-6 py-2 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600"
+              >
+                Download as CSV
+              </button>
+            </div>
+          </div>
+
           <table className="w-full text-left border-collapse">
             <thead>
               <tr>
