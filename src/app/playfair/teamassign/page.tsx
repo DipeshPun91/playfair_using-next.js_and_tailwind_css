@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import jsPDF from "jspdf";
 
 interface Teams {
   [key: string]: string[][];
@@ -49,6 +50,52 @@ export default function TeamAssignment() {
     });
 
     setTeams({ ...teams, [game]: assignedTeams });
+  };
+
+  const downloadPDF = () => {
+    if (!game || !teams[game]) return alert("No teams to download");
+
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(`${game} Teams`, 10, 10);
+
+    let yOffset = 20;
+    teams[game].forEach((team, index) => {
+      doc.setFontSize(14);
+      doc.text(`Team ${index + 1} (${team.length} players)`, 10, yOffset);
+      yOffset += 10;
+
+      doc.setFontSize(12);
+      team.forEach((player) => {
+        doc.text(`- ${player}`, 15, yOffset);
+        yOffset += 10;
+      });
+
+      yOffset += 10;
+    });
+
+    doc.save(`${game}-teams.pdf`);
+  };
+
+  const downloadTextFile = () => {
+    if (!game || !teams[game]) return alert("No teams to download");
+
+    let content = `${game} Teams\n\n`;
+    teams[game].forEach((team, index) => {
+      content += `Team ${index + 1} (${team.length} players):\n`;
+      team.forEach((player) => {
+        content += `- ${player}\n`;
+      });
+      content += "\n";
+    });
+
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${game}-teams.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -119,9 +166,26 @@ export default function TeamAssignment() {
 
           {game && teams[game] && (
             <div className="mt-12">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-                {game} Teams
-              </h2>
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+                  {game} Teams
+                </h2>
+                <div className="flex gap-4">
+                  <button
+                    onClick={downloadPDF}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200"
+                  >
+                    Download as PDF
+                  </button>
+                  <button
+                    onClick={downloadTextFile}
+                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-all duration-200"
+                  >
+                    Download as Text File
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
                 {teams[game].map((team, index) => (
                   <div
