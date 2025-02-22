@@ -58,15 +58,71 @@ export default function BracketPage() {
     const element = document.getElementById("bracket");
     if (!element) return;
 
-    const canvas = await html2canvas(element, {
-      scrollX: -window.scrollX,
-      scrollY: -window.scrollY,
-    });
-    const imgData = canvas.toDataURL("image/png");
+    if (tieSheetType === "knockout") {
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.style.display = "flex";
+      clone.style.flexDirection = "column";
+      clone.style.gap = "40px";
+      clone.style.padding = "20px";
+      clone.style.background = "#f9fafb";
 
-    const pdf = new jsPDF("landscape", "pt", [canvas.width, canvas.height]);
-    pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
-    pdf.save("tournament-bracket.pdf");
+      element.style.visibility = "hidden";
+      document.body.appendChild(clone);
+
+      const canvas = await html2canvas(clone, {
+        scrollX: -window.scrollX,
+        scrollY: -window.scrollY,
+      });
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF("landscape", "pt", [canvas.width, canvas.height]);
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save("tournament-bracket.pdf");
+
+      document.body.removeChild(clone);
+      element.style.visibility = "visible";
+    } else {
+      const matchElements = Array.from(
+        document.querySelectorAll(".league-match")
+      ) as HTMLElement[];
+      const pdf = new jsPDF("portrait", "pt", [1024, 768]);
+      const chunks = [];
+
+      while (matchElements.length) {
+        chunks.push(matchElements.splice(0, 12));
+      }
+
+      for (const [index, chunk] of chunks.entries()) {
+        const tempDiv = document.createElement("div");
+        tempDiv.style.display = "grid";
+        tempDiv.style.gridTemplateColumns = "repeat(3, 1fr)";
+        tempDiv.style.gap = "20px";
+        tempDiv.style.padding = "20px";
+        tempDiv.style.background = "#f9fafb";
+        tempDiv.style.position = "fixed";
+        tempDiv.style.left = "-9999px";
+
+        chunk.forEach((matchEl) => {
+          const clone = matchEl.cloneNode(true) as HTMLElement;
+          clone.style.width = "300px";
+          tempDiv.appendChild(clone);
+        });
+
+        document.body.appendChild(tempDiv);
+
+        const canvas = await html2canvas(tempDiv);
+        const imgData = canvas.toDataURL("image/png");
+        const imgWidth = pdf.internal.pageSize.getWidth();
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        if (index > 0) pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+
+        document.body.removeChild(tempDiv);
+      }
+
+      pdf.save("tournament-bracket.pdf");
+    }
   };
 
   const getGlobalMatchIndex = (roundIndex: number, matchIndex: number) => {
@@ -91,7 +147,7 @@ export default function BracketPage() {
 
       <div id="bracket" className="overflow-x-auto pb-4">
         {tieSheetType === "league" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {matches.map((round, roundIndex) =>
               round.map((match, matchIndex) => {
                 const globalMatchIndex = getGlobalMatchIndex(
@@ -101,7 +157,7 @@ export default function BracketPage() {
                 return (
                   <div
                     key={`${roundIndex}-${matchIndex}`}
-                    className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm"
+                    className="league-match bg-gray-50 p-4 rounded-lg border border-gray-300 shadow-sm"
                   >
                     <h3 className="text-lg font-semibold text-center mb-4">
                       Match {globalMatchIndex}
